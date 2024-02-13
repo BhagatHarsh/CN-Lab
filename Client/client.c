@@ -9,6 +9,7 @@
 #include <netdb.h>
 
 #define MAX_LINE 2048
+#define PACKET_SIZE 1024
 
 int main(int argc, char *argv[])
 {
@@ -20,7 +21,9 @@ int main(int argc, char *argv[])
   char c;
   int s;
   int len, port = 1234;
-  while ((c = getopt(argc, argv, "h:p:")) != -1)
+  char file_name[100] = "sample.txt";
+
+  while ((c = getopt(argc, argv, "h:p:f:")) != -1)
   {
     switch (c)
     {
@@ -29,6 +32,9 @@ int main(int argc, char *argv[])
       break;
     case 'p':
       port = atoi(optarg);
+      break;
+    case 'f':
+      strcpy(file_name, optarg);
       break;
     default:
       printf("Usage: %s -h <host_ip>\n", argv[0]);
@@ -79,8 +85,8 @@ int main(int argc, char *argv[])
     buf[MAX_LINE - 1] = '\0';
     len = strlen(buf) + 1;
 
-    printf("GET diff: %d\n", strcmp(buf, GET));
-    printf("EXIT diff: %d\n", strcmp(buf, EXIT));
+    // printf("GET diff: %d\n", strcmp(buf, GET));
+    // printf("EXIT diff: %d\n", strcmp(buf, EXIT));
 
     if (send(s, buf, len, 0) > 0)
     {
@@ -91,14 +97,39 @@ int main(int argc, char *argv[])
       printf("Sending failed %s\n", buf);
     }
 
-
     if (strcmp(buf, GET) == 0)
     {
-      printf("Recieving File!\n");
-      if (recv(s, buf, sizeof(buf), 0) > 0)
+
+      // sending filename
+      if (send(s, file_name, strlen(file_name), 0) > 0)
       {
-        fputs(buf, stdout);
+        printf("File name send: %s\n", file_name);
       }
+      else
+      {
+        printf("Sending failed %s\n", file_name);
+      }
+
+      printf("Recieving File!\n");
+      strcpy(buf, EMPTY);
+      // create the file received and add the contents received
+      FILE *fp = fopen(file_name, "w");
+      if (fp == NULL)
+      {
+        printf("File not created\n");
+        exit(1);
+      }
+      char *chunk = malloc(PACKET_SIZE);
+      ssize_t numBytes;
+      while ((numBytes = recv(s, chunk, PACKET_SIZE, 0)) > 0)
+      {
+        fwrite(chunk, sizeof(char), numBytes, fp);
+        if (memchr(chunk, '\x04', numBytes) != NULL) {
+            break; // Stop receiving data
+        }
+      }
+      free(chunk);
+      fclose(fp);
       printf("\nFile Recieved!\n");
     }
     else if (strcmp(buf, EXIT) == 0)

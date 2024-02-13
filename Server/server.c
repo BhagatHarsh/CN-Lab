@@ -11,6 +11,7 @@
 
 #define MAX_PENDING 5
 #define MAX_LINE 2048
+#define PACKET_SIZE 1024
 
 int main(int argc, char **argv)
 {
@@ -19,19 +20,15 @@ int main(int argc, char **argv)
   char buf[MAX_LINE] = "";
   socklen_t len;
   int s, new_s, port = 1234;
-  char str[INET_ADDRSTRLEN], GET[] = "GET\n", EXIT[] = "EXIT\n", c;
-  char file_name[100] = "sample.txt";
+  char str[INET_ADDRSTRLEN], GET[] = "GET\n", EXIT[] = "EXIT\n", EMPTY[] = "", c;
   FILE *src;
 
-  while ((c = getopt(argc, argv, "p:f:")) != -1)
+  while ((c = getopt(argc, argv, "p:")) != -1)
   {
     switch (c)
     {
     case 'p':
       port = atoi(optarg);
-      break;
-    case 'f':
-      strcpy(file_name, optarg);
       break;
     default:
       printf("Usage: %s -p <port_number> -f <file_name>\n", argv[0]);
@@ -78,17 +75,24 @@ int main(int argc, char **argv)
     {
       fputs(buf, stdout);
 
-      printf("GET diff: %d\n", strcmp(buf, GET));
-      printf("EXIT diff: %d\n", strcmp(buf, EXIT));
+      // printf("GET diff: %d\n", strcmp(buf, GET));
+      // printf("EXIT diff: %d\n", strcmp(buf, EXIT));
 
       if (strcmp(buf, GET) == 0)
       {
+        printf("GET request received.\n");
+        // recieving file name
+        strcpy(buf, EMPTY);
+        if ((len = recv(new_s, buf, sizeof(buf), 0)) < 0)
+        {
+          perror("simplex-talk: recv");
+          exit(1);
+        }
 
-        printf("Serving %s to you!\n", file_name);
-        // strncpy(file_name, buf + 4, len - 4);
-        // file_name[len - 4] = '\0';
-        
-        src = fopen(file_name, "r");
+        // Print the file name
+        printf("File name: %s\n", buf);
+
+        src = fopen(buf, "r");
         if (src == NULL)
         {
           printf("Source file not found. Exiting.\n");
@@ -107,15 +111,23 @@ int main(int argc, char **argv)
         fread(buffer, sizeof(char), file_size, src);
         fclose(src);
 
-        // Send the buffer over the socket
-        if(send(new_s, buffer, file_size, 0) < 0){
-          printf("Error sending file.\n");
-        }else{
-          printf("File sent.\n");
+        // Send the buffer over the socket in chunks
+        for (long i = 0; i < file_size; i += PACKET_SIZE)
+        {
+          long remaining = file_size - i;
+          long chunk_size = remaining < PACKET_SIZE ? remaining : PACKET_SIZE;
+          if (send(new_s, buffer + i, chunk_size, 0) < 0)
+          {
+            printf("Error sending file chunk.\n");
+            break;
+          }
         }
 
-        // Print the contents
-        puts(buffer);
+        // Send the EOT character to signal the end of the file
+        if (send(new_s, "\x04", 1, 0) < 0)
+        {
+          printf("Error sending EOT character.\n");
+        }
 
         free(buffer);
       }

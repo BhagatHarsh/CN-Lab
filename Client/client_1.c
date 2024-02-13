@@ -9,7 +9,6 @@
 #include <netdb.h>
 
 #define MAX_LINE 2048
-FILE *received_file = NULL;
 
 int main(int argc, char *argv[])
 {
@@ -21,7 +20,9 @@ int main(int argc, char *argv[])
     char c;
     int s;
     int len, port = 1234;
-    while ((c = getopt(argc, argv, "h:p:")) != -1)
+    char file_name[100] = "sample.txt";
+
+    while ((c = getopt(argc, argv, "h:p:f:")) != -1)
     {
         switch (c)
         {
@@ -30,6 +31,9 @@ int main(int argc, char *argv[])
             break;
         case 'p':
             port = atoi(optarg);
+            break;
+        case 'f':
+            strcpy(file_name, optarg);
             break;
         default:
             printf("Usage: %s -h <host_ip>\n", argv[0]);
@@ -80,8 +84,8 @@ int main(int argc, char *argv[])
         buf[MAX_LINE - 1] = '\0';
         len = strlen(buf) + 1;
 
-        printf("GET diff: %d\n", strcmp(buf, GET));
-        printf("EXIT diff: %d\n", strcmp(buf, EXIT));
+        // printf("GET diff: %d\n", strcmp(buf, GET));
+        // printf("EXIT diff: %d\n", strcmp(buf, EXIT));
 
         if (send(s, buf, len, 0) > 0)
         {
@@ -94,19 +98,33 @@ int main(int argc, char *argv[])
 
         if (strcmp(buf, GET) == 0)
         {
-            printf("Receiving File!\n");
-            FILE *received_file = fopen("received_file.bin", "wb");
-            if (received_file == NULL)
+
+            // sending filename
+            if (send(s, file_name, strlen(file_name), 0) > 0)
             {
-                perror("Failed to open file for writing");
-                exit(EXIT_FAILURE);
+                printf("File name send: %s\n", file_name);
             }
-            while (recv(s, buf, sizeof(buf), 0) > 0)
+            else
             {
-                fwrite(buf, sizeof(char), len, received_file);
+                printf("Sending failed %s\n", file_name);
             }
-            printf("\nFile Received!\n");
-            fclose(received_file);
+
+            printf("Recieving File!\n");
+            strcpy(buf, EMPTY);
+            if (recv(s, buf, sizeof(buf), 0) > 0)
+            {
+                fputs(buf, stdout);
+            }
+            printf("\nFile Recieved! %s\n", buf);
+            // create the file received and add the contents received
+            FILE *fp = fopen(file_name, "w");
+            if (fp == NULL)
+            {
+                printf("File not created\n");
+                exit(1);
+            }
+            fwrite(buf, sizeof(char), strlen(buf), fp);
+            fclose(fp);
         }
         else if (strcmp(buf, EXIT) == 0)
         {

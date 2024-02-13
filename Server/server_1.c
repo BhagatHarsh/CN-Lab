@@ -11,7 +11,6 @@
 
 #define MAX_PENDING 5
 #define MAX_LINE 2048
-#define PACKET_SIZE 1024
 
 int main(int argc, char **argv)
 {
@@ -20,19 +19,15 @@ int main(int argc, char **argv)
     char buf[MAX_LINE] = "";
     socklen_t len;
     int s, new_s, port = 1234;
-    char str[INET_ADDRSTRLEN], GET[] = "GET\n", EXIT[] = "EXIT\n", c;
-    char file_name[100] = "sample.txt";
+    char str[INET_ADDRSTRLEN], GET[] = "GET\n", EXIT[] = "EXIT\n", EMPTY[] = "", c;
     FILE *src;
 
-    while ((c = getopt(argc, argv, "p:f:")) != -1)
+    while ((c = getopt(argc, argv, "p:")) != -1)
     {
         switch (c)
         {
         case 'p':
             port = atoi(optarg);
-            break;
-        case 'f':
-            strcpy(file_name, optarg);
             break;
         default:
             printf("Usage: %s -p <port_number> -f <file_name>\n", argv[0]);
@@ -79,15 +74,24 @@ int main(int argc, char **argv)
         {
             fputs(buf, stdout);
 
-            printf("GET diff: %d\n", strcmp(buf, GET));
-            printf("EXIT diff: %d\n", strcmp(buf, EXIT));
+            // printf("GET diff: %d\n", strcmp(buf, GET));
+            // printf("EXIT diff: %d\n", strcmp(buf, EXIT));
 
             if (strcmp(buf, GET) == 0)
             {
+                printf("GET request received.\n");
+                // recieving file name
+                strcpy(buf, EMPTY);
+                if ((len = recv(new_s, buf, sizeof(buf), 0)) < 0)
+                {
+                    perror("simplex-talk: recv");
+                    exit(1);
+                }
 
-                printf("Serving %s to you!\n", file_name);
+                // Print the file name
+                printf("File name: %s\n", buf);
 
-                src = fopen(file_name, "r");
+                src = fopen(buf, "r");
                 if (src == NULL)
                 {
                     printf("Source file not found. Exiting.\n");
@@ -98,29 +102,25 @@ int main(int argc, char **argv)
                     exit(EXIT_FAILURE);
                 }
 
-                FILE *src = fopen(file_name, "rb");
-                if (src == NULL)
-                {
-                    printf("Source file not found. Exiting.\n");
-                }
-
-                // Send the file in packets
-                char packet[PACKET_SIZE];
-                size_t bytes_read;
-                while ((bytes_read = fread(packet, sizeof(char), PACKET_SIZE, src)) > 0)
-                {
-                    if (send(new_s, packet, bytes_read, 0) < 0)
-                    {
-                        printf("Error sending file.\n");
-                    }
-                    else
-                    {
-                        printf("Sent: %s\n", packet);
-                    }
-                }
-
-                // Close the file
+                // Read the file into a buffer
+                fseek(src, 0, SEEK_END);
+                long file_size = ftell(src);
+                rewind(src);
+                char *buffer = (char *)malloc(file_size);
+                fread(buffer, sizeof(char), file_size, src);
                 fclose(src);
+
+                // Send the buffer over the socket
+                if (send(new_s, buffer, file_size, 0) < 0)
+                {
+                    printf("Error sending file.\n");
+                }
+                else
+                {
+                    printf("File sent.\n");
+                }
+
+                free(buffer);
             }
             else if (strcmp(buf, EXIT) == 0)
             {
