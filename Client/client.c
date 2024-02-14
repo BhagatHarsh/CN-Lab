@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
       strcpy(file_name, optarg);
       break;
     default:
-      printf("Usage: %s -h <host_ip>\n", argv[0]);
+      printf("Usage: %s -h <host_ip> -f <file_name> -p <port_number>\n", argv[0]);
       exit(EXIT_FAILURE);
     }
   }
@@ -110,6 +110,17 @@ int main(int argc, char *argv[])
         printf("Sending failed %s\n", file_name);
       }
 
+      // file size
+      long file_size;
+      recv(s, &file_size, sizeof(file_size), 0);
+      file_size = ntohl(file_size);
+
+      if(file_size == 0){
+        printf("File not found.\n");
+        continue;
+      }
+
+      printf("File size: %ld\n", file_size);
       printf("Recieving File!\n");
       strcpy(buf, EMPTY);
       // create the file received and add the contents received
@@ -119,16 +130,21 @@ int main(int argc, char *argv[])
         printf("File not created\n");
         exit(1);
       }
-      char *chunk = malloc(PACKET_SIZE);
-      ssize_t numBytes;
-      while ((numBytes = recv(s, chunk, PACKET_SIZE, 0)) > 0)
+
+      char *buffer = (char *)malloc(file_size);
+      if (recv(s, buffer, file_size, 0) < 0)
       {
-        fwrite(chunk, sizeof(char), numBytes, fp);
-        if (memchr(chunk, '\x04', numBytes) != NULL) {
-            break; // Stop receiving data
-        }
+        printf("Error recieving file.\n");
       }
-      free(chunk);
+      else
+      {
+        printf("File recieved.\n");
+      }
+
+      printf("Writing to file.\n");
+      printf("Buffer: %s\n", buffer);
+      fwrite(buffer, sizeof(char), file_size, fp);
+
       fclose(fp);
       printf("\nFile Recieved!\n");
     }

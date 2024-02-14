@@ -22,6 +22,7 @@ int main(int argc, char **argv)
   int s, new_s, port = 1234;
   char str[INET_ADDRSTRLEN], GET[] = "GET\n", EXIT[] = "EXIT\n", EMPTY[] = "", c;
   FILE *src;
+  uint32_t net_file_size;
 
   while ((c = getopt(argc, argv, "p:")) != -1)
   {
@@ -95,12 +96,10 @@ int main(int argc, char **argv)
         src = fopen(buf, "r");
         if (src == NULL)
         {
-          printf("Source file not found. Exiting.\n");
-          char error[] = "Source file not found. Exiting.\n";
-          send(new_s, error, strlen(error), 0);
-          close(new_s);
-          close(s);
-          exit(EXIT_FAILURE);
+          printf("Source file not found.\n");
+          net_file_size = htonl((long)0);
+          send(new_s, &net_file_size, sizeof(net_file_size), 0);
+          continue;
         }
 
         // Read the file into a buffer
@@ -111,23 +110,29 @@ int main(int argc, char **argv)
         fread(buffer, sizeof(char), file_size, src);
         fclose(src);
 
-        // Send the buffer over the socket in chunks
-        for (long i = 0; i < file_size; i += PACKET_SIZE)
+        printf("File size: %ld\n", file_size);
+
+        // send the file_size
+        net_file_size = htonl(file_size);
+        if (send(new_s, &net_file_size, sizeof(net_file_size), 0) < 0)
         {
-          long remaining = file_size - i;
-          long chunk_size = remaining < PACKET_SIZE ? remaining : PACKET_SIZE;
-          if (send(new_s, buffer + i, chunk_size, 0) < 0)
-          {
-            printf("Error sending file chunk.\n");
-            break;
-          }
+          printf("Error sending file size.\n");
+        }
+
+        printf("Sending file.\n");
+        printf("File contents: %s\n", buffer);
+
+        // send file
+        if (send(new_s, buffer, file_size, 0) < 0)
+        {
+          printf("Error sending file.\n");
         }
 
         // Send the EOT character to signal the end of the file
-        if (send(new_s, "\x04", 1, 0) < 0)
-        {
-          printf("Error sending EOT character.\n");
-        }
+        // if (send(new_s, "\x04", 1, 0) < 0)
+        // {
+        //   printf("Error sending EOT character.\n");
+        // }
 
         free(buffer);
       }
