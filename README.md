@@ -31,7 +31,7 @@ gcc client.c -o client
 ```
 
 ```
-./client -p 1234 -h 0.0.0.0 -f file.txt
+./client -p 1234 -h 0.0.0.0 -f sample.txt
 ```
 
 ### Run the server first and then the client.
