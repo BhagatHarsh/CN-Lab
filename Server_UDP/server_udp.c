@@ -1,8 +1,3 @@
-/* CSD 304 Computer Networks, Fall 2016
-   Lab 2, server
-   Team:
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +8,7 @@
 #include <netdb.h>
 
 #define SERVER_PORT 5432
-#define BUF_SIZE 4096
+#define BUF_SIZE 1024
 
 int main(int argc, char *argv[])
 {
@@ -28,15 +23,10 @@ int main(int argc, char *argv[])
   struct hostent *hp;
   char filename[100] = "sample.wav";
 
-  /* Declarations for file(s) to be sent
-     ...
-  */
-
   /* For inserting delays, use nanosleep()
      struct timespec ... */
 
   /* To get filename from commandline */
-  /* if (argc==...) {} */
   if (argc == 3)
   {
     strcpy(filename, argv[2]);
@@ -104,7 +94,6 @@ int main(int argc, char *argv[])
     {
       printf("Server received GET from %s\n", clientIP);
       printf("Sending file %s to client\n", filename);
-      // break;
       /* Send to client */
       /* Add code to send file if the incoming message is GET */
 
@@ -126,12 +115,12 @@ int main(int argc, char *argv[])
         }
       }
       fclose(fp);
+      /* Send BYE to signal termination */
+      strcpy(buf, "BYE");
+      sendto(s, buf, sizeof(buf), 0,
+             (struct sockaddr *)&client_addr, client_addr_len);
     }
 
     memset(buf, 0, sizeof(buf));
   }
-  /* Send BYE to signal termination */
-  // strcpy(buf, "BYE");
-  // sendto(s, buf, sizeof(buf), 0,
-  //        (struct sockaddr *)&client_addr, client_addr_len);
 }

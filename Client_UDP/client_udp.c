@@ -1,11 +1,7 @@
-/* CSD 304 Computer Networks, Fall 2016
-   Lab 2, client
-   Team:
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,7 +9,7 @@
 #include <netdb.h>
 
 #define SERVER_PORT 5432
-#define BUF_SIZE 5121
+#define BUF_SIZE 1024
 
 int main(int argc, char *argv[])
 {
@@ -83,21 +79,29 @@ int main(int argc, char *argv[])
       perror("Client: sendto()");
       return 0;
     }
-  /* get reply, display it or store in a file*/
-  /* Add code to receive unlimited data and either display the data
-     or if specified by the user, store it in the specified file.
-     Instead of recv(), use recvfrom() call for receiving data */
-    recvfrom(s, buf, BUF_SIZE, 0, (struct sockaddr *)&sin, &len);
+    /* get reply, display it or store in a file*/
+    while (1)
+    {
+      ssize_t bytes_received = recvfrom(s, buf, sizeof(buf), 0, NULL, NULL);
+      if (bytes_received < 0)
+      {
+        perror("recvfrom");
+        fclose(fp);
+        close(s);
+        exit(1);
+      }
 
-  FILE *fp2 = fopen(argv[2], "w");
-  if (fp2 == NULL)
-  {
-    fprintf(stderr, "Error opening output file\n");
-    exit(1);
-  }
+      fwrite(buf, 1, bytes_received, fp);
 
-  fwrite(buf, 1, sizeof(buf), fp2);
-  fclose(fp2);
+      // Check if the received data contains "BYE"
+      if (strstr(buf, "BYE") != NULL)
+      {
+        printf("Received BYE message. Closing connection.\n");
+        break;
+      }
+    }
+    fclose(fp);
+    close(s);
   }
   else
   {
@@ -107,4 +111,6 @@ int main(int argc, char *argv[])
       return 0;
     }
   }
+  // char *args[] = {"cvlc", argv[2], NULL};
+  // execv(args[0], args);
 }
