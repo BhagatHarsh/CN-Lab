@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
       /* Send to client */
       /* Add code to send file if the incoming message is GET */
 
-      FILE *fp = fopen(filename, "r");
+      FILE *fp = fopen(filename, "rb");
       if (fp == NULL)
       {
         fprintf(stderr, "Error opening file\n");

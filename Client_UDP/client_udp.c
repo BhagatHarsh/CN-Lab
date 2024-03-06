@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
   if (argc == 3)
   {
-    fp = fopen(argv[2], "w");
+    fp = fopen(argv[2], "wb");
     if (fp == NULL)
     {
       fprintf(stderr, "Error opening output file\n");
@@ -95,8 +95,9 @@ int main(int argc, char *argv[])
       break;
     }
     fwrite(buf, 1, bytes_received, vlcPipe);
-    fwrite(buf, 1, bytes_received, fp);
+    // fwrite(buf, 1, bytes_received, fp);
   }
+  pclose(vlcPipe);
   fclose(fp);
   close(s);
   // char *args[] = {"cvlc", argv[2], NULL};
