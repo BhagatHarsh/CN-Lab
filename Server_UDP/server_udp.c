@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <time.h>
 
 #define SERVER_PORT 5432
 #define BUF_SIZE 1024
@@ -113,6 +114,7 @@ int main(int argc, char *argv[])
           perror("server: sendto");
           exit(1);
         }
+        nanosleep((const struct timespec[]){{0, 100000}}, NULL);
       }
       fclose(fp);
       /* Send BYE to signal termination */

@@ -69,48 +69,36 @@ int main(int argc, char *argv[])
   printf("To play the music, pipe the downlaod file to a player, e.g., ALSA, SOX, VLC: cat recvd_file.wav | vlc -\n");
 
   /* send message to server */
-  fgets(buf, sizeof(buf), stdin);
-  buf[BUF_SIZE - 1] = '\0';
-  len = strlen(buf) + 1;
-  if (strcmp(buf, "GET\n") == 0)
+  if (sendto(s, "GET", 4, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0)
   {
-    if (sendto(s, "GET", len - 1, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-    {
-      perror("Client: sendto()");
-      return 0;
-    }
-    /* get reply, display it or store in a file*/
-    while (1)
-    {
-      ssize_t bytes_received = recvfrom(s, buf, sizeof(buf), 0, NULL, NULL);
-      if (bytes_received < 0)
-      {
-        perror("recvfrom");
-        fclose(fp);
-        close(s);
-        exit(1);
-      }
-
-      fwrite(buf, 1, bytes_received, fp);
-
-      // Check if the received data contains "BYE"
-      if (strstr(buf, "BYE") != NULL)
-      {
-        printf("Received BYE message. Closing connection.\n");
-        break;
-      }
-    }
-    fclose(fp);
-    close(s);
+    perror("Client: sendto()");
+    return 0;
   }
-  else
+  /* get reply, display it or store in a file*/
+  // pipe it to vlc directly streaming
+  FILE *vlcPipe = popen("vlc -", "w");
+  while (1)
   {
-    if (sendto(s, buf, len, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    ssize_t bytes_received = recvfrom(s, buf, sizeof(buf), 0, NULL, NULL);
+    if (bytes_received < 0)
     {
-      perror("Client: sendto()");
-      return 0;
+      perror("recvfrom");
+      fclose(fp);
+      close(s);
+      exit(1);
     }
+
+    // Check if the received data contains "BYE"
+    if (strstr(buf, "BYE") != NULL)
+    {
+      printf("Received BYE message. Closing connection.\n");
+      break;
+    }
+    fwrite(buf, 1, bytes_received, vlcPipe);
+    fwrite(buf, 1, bytes_received, fp);
   }
+  fclose(fp);
+  close(s);
   // char *args[] = {"cvlc", argv[2], NULL};
   // execv(args[0], args);
 }
