@@ -1,3 +1,11 @@
+/*
+AU2140084 - Harsh Bhagat
+*/
+
+/*
+Necessary Imports
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,12 +16,16 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+/*
+Constant definitions
+*/
 #define SERVER_PORT 5432
 #define BUF_SIZE 1024
 
 int main(int argc, char *argv[])
-{
+{ /* start of main */
 
+  /* Variable Definitions */
   FILE *fp;
   struct hostent *hp;
   struct sockaddr_in sin;
@@ -22,6 +34,7 @@ int main(int argc, char *argv[])
   int s;
   int len;
 
+  /* If server IP is provided */
   if ((argc == 2) || (argc == 3))
   {
     host = argv[1];
@@ -32,15 +45,16 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  if (argc == 3)
-  {
-    fp = fopen(argv[2], "wb");
-    if (fp == NULL)
-    {
-      fprintf(stderr, "Error opening output file\n");
-      exit(1);
-    }
-  }
+  /* If saving filename is provided, unnecessary now as we are just streaming */
+  // if (argc == 3)
+  // {
+  //   fp = fopen(argv[2], "wb");
+  //   if (fp == NULL)
+  //   {
+  //     fprintf(stderr, "Error opening output file\n");
+  //     exit(1);
+  //   }
+  // }
 
   /* translate host name into peer's IP address */
   hp = gethostbyname(host);
@@ -50,7 +64,9 @@ int main(int argc, char *argv[])
     exit(1);
   }
   else
+  {
     printf("Host %s found!\n", argv[1]);
+  }
 
   /* build address data structure */
   memset((char *)&sin, 0, sizeof(sin));
@@ -68,14 +84,14 @@ int main(int argc, char *argv[])
   printf("Client will get data from to %s:%d.\n", argv[1], SERVER_PORT);
   printf("To play the music, pipe the downlaod file to a player, e.g., ALSA, SOX, VLC: cat recvd_file.wav | vlc -\n");
 
-  /* send message to server */
+  /* send GET to server */
   if (sendto(s, "GET", 4, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0)
   {
     perror("Client: sendto()");
     return 0;
   }
-  /* get reply, display it or store in a file*/
-  // pipe it to vlc directly streaming
+
+  // pipe it to vlc directly for streaming
   FILE *vlcPipe = popen("vlc -", "w");
   while (1)
   {
@@ -83,7 +99,7 @@ int main(int argc, char *argv[])
     if (bytes_received < 0)
     {
       perror("recvfrom");
-      fclose(fp);
+      // fclose(fp);
       close(s);
       exit(1);
     }
@@ -98,8 +114,8 @@ int main(int argc, char *argv[])
     // fwrite(buf, 1, bytes_received, fp);
   }
   pclose(vlcPipe);
-  fclose(fp);
+  // fclose(fp);
   close(s);
   // char *args[] = {"cvlc", argv[2], NULL};
   // execv(args[0], args);
-}
+} /* end of main */

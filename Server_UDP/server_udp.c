@@ -1,3 +1,10 @@
+/*
+AU2140084 - Harsh Bhagat
+*/
+
+/*
+Necessary Imports
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,11 +15,16 @@
 #include <netdb.h>
 #include <time.h>
 
+/*
+Constant definitions
+*/
 #define SERVER_PORT 5432
 #define BUF_SIZE 1024
 
 int main(int argc, char *argv[])
-{
+{ /* start of main */
+
+  /* Variable Definitions */
   struct sockaddr_in sin;
   struct sockaddr_storage client_addr;
   char clientIP[INET_ADDRSTRLEN]; /* For IPv4 addresses */
@@ -23,9 +35,6 @@ int main(int argc, char *argv[])
   char *host;
   struct hostent *hp;
   char filename[100] = "sample.wav";
-
-  /* For inserting delays, use nanosleep()
-     struct timespec ... */
 
   /* To get filename from commandline */
   if (argc == 3)
@@ -62,10 +71,14 @@ int main(int argc, char *argv[])
   }
   /* Else bind to 0.0.0.0 */
   else
+  {
     sin.sin_addr.s_addr = INADDR_ANY;
+  }
 
+  /* converting the integer port to network compatible and saving in the structure */
   sin.sin_port = htons(SERVER_PORT);
 
+  /* binding to the socket */
   if ((bind(s, (struct sockaddr *)&sin, sizeof(sin))) < 0)
   {
     perror("server: bind");
@@ -91,12 +104,13 @@ int main(int argc, char *argv[])
               &(((struct sockaddr_in *)&client_addr)->sin_addr),
               clientIP, INET_ADDRSTRLEN);
 
+    /* If GET is recieved from the client */
     if (strcmp(buf, "GET") == 0)
     {
       printf("Server received GET from %s\n", clientIP);
       printf("Sending file %s to client\n", filename);
-      /* Send to client */
-      /* Add code to send file if the incoming message is GET */
+
+      /* Sending file to client */
 
       FILE *fp = fopen(filename, "rb");
       if (fp == NULL)
@@ -114,15 +128,18 @@ int main(int argc, char *argv[])
           perror("server: sendto");
           exit(1);
         }
-        nanosleep((const struct timespec[]){{0, 100000}}, NULL);
+
+        /* sleep for 0.005 seconds*/
+        nanosleep((const struct timespec[]){{0, 5000000}}, NULL);
       }
       fclose(fp);
-      /* Send BYE to signal termination */
+      /* Send BYE as signal termination token*/
       strcpy(buf, "BYE");
       sendto(s, buf, sizeof(buf), 0,
              (struct sockaddr *)&client_addr, client_addr_len);
     }
 
+    /*Reset Buffer */
     memset(buf, 0, sizeof(buf));
   }
-}
+} /* end of main */
